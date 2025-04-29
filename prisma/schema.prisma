@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  Active
+  Banned
+}
+
+enum UserRole {
+  Admin
+  User
+}
+
+enum CategoryStatus {
+  Active
+  Inactive
+}
+
+enum CourseStatus {
+  Active
+  Inactive
+}
+
+enum OrderStatus {
+  Pending // รอชำระเงิน
+  Paid // ชำระเงินแล้ว
+  Shipped // จัดส่งแล้ว
+  Delivered // ส่งถึงแล้ว
+  Cancelled // ยกเลิก
+}
+
+model User {
+  id        String     @id @default(uuid())
+  name      String?
+  email     String     @unique
+  password  String
+  status    UserStatus @default(Active)
+  role      UserRole   @default(User)
+  pictureId String?
+  picture   String?
+  address   String?
+  tel       String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  cart      Cart[]
+  order     Order[]
+}
+
+model Category {
+  id        String         @id @default(uuid())
+  name      String
+  status    CategoryStatus @default(Active)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  courses   Courses[]
+}
+
+model Courses {
+  id          String        @id @default(uuid())
+  title       String
+  description String
+  cost        Float         @default(0)
+  basePrice   Float
+  price       Float
+  enrolled    Int           @default(0)
+  seats       Int           @default(0)
+  status      CourseStatus  @default(Active)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
+  images      CourseImage[]
+  CartItems   CartItem[]
+  OrderItem   OrderItem[]
+}
+
+model CourseImage {
+  id        String   @id @default(uuid())
+  url       String
+  fileId    String
+  isMain    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courseId  String
+  course    Courses  @relation(fields: [courseId], references: [id])
+}
+
+model Cart {
+  id          String     @id @default(uuid())
+  cartTotal   Float      @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  orderedById String
+  orderedBy   User       @relation(fields: [orderedById], references: [id])
+  courses     CartItem[]
+}
+
+model CartItem {
+  id    String @id @default(uuid())
+  count Int    @default(1)
+  price Float
+
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  coursesId String
+  course    Courses @relation(fields: [coursesId], references: [id])
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  orderNumber    String      @unique // หมายเลขคำสั่งซื้อ
+  totalAmount    Float // ยอดรวม
+  status         OrderStatus @default(Pending)
+  paymentImage   String? // รูปภาพการชำระเงิน
+  paymentAt      DateTime? // วันที่ชำระเงิน
+  address        String? // ที่อยู่
+  phone          String? // เบอร์โทร
+  note           String? // หมายเหตุ
+  personalImage  String? // รูปภาพส่วนตัว
+  shippingFee    Float       @default(0)
+  trackingNumber String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  customerId String
+  customer   User        @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  quantity    Int
+  price       Float
+  totalPrice  Float
+  courseTitle String
+  courseImage String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderId  String
+  order    Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Courses @relation(fields: [courseId], references: [id])
+}
